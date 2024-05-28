@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/gr"
-    tools:context=".PhotoActivity">
+    tools:context=".activity.PhotoActivity">
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/tbPhoto"
