@@ -26,6 +26,7 @@ public class MainAdapter extends RecyclerView.Adapter {
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(MainActivity);
 
+        // infla a view
         View v = inflater.inflate(R.layout.list_item, parent, false);
         return new MyViewHolder(v);
     }
@@ -40,6 +41,7 @@ public class MainAdapter extends RecyclerView.Adapter {
         imPhoto.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
+                // abre a foto que foi clicada
                 MainActivity.startPhotoActivity(photos.get(position));
             }
         });
@@ -47,6 +49,6 @@ public class MainAdapter extends RecyclerView.Adapter {
 
     @Override
     public int getItemCount() {
-        return 0;
+        return photos.size();
     }
 }

@@ -1,5 +1,6 @@
 package alvarenga.brandao.galeria;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -16,7 +17,6 @@ import android.view.MenuItem;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
-import androidx.activity.result.ActivityResult;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -44,28 +44,77 @@ public class MainActivity extends AppCompatActivity {
     static int RESULT_TAKE_PICTURE = 1;
     static int RESULT_REQUEST_PERMISSION = 2;
     String currentPhotoPath;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
+        setContentView(R.layout.activity_main);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
 
+        // lista de permissoes do usuario
+        List<String> permissions = new ArrayList<>();
+        // adiciona permissao para a camera
+        permissions.add(Manifest.permission.CAMERA);
+        // verifica as permissoes
+        checkForPermissions(permissions);
+
+        Toolbar toolbar = findViewById(R.id.tbMain);
+        // adiciona a toolbar
+        setSupportActionBar(toolbar);
+
+        // acessa a pasta do aplicativo
+        File dir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+
+        // lista com as fotos que estao no diretorio
+        File[] files = dir.listFiles();
+
+        // loop para adicionar o caminho das fotos na lista de paths
+        for(int i = 0; i < files.length; i++) {
+            photos.add(files[i].getAbsolutePath());
+        }
+        mainAdapter = new MainAdapter(MainActivity.this, photos);
+        RecyclerView rvGallery = findViewById(R.id.rvGallery);
+        rvGallery.setAdapter(mainAdapter);
+        float w = getResources().getDimension(R.dimen.itemWidth);
+        int numberOfColumns = Util.calculateNoOfColumns(MainActivity.this, w);
+
+        // grid em colunas
+        GridLayoutManager gridLayoutManager = new GridLayoutManager(MainActivity.this, numberOfColumns);
+        rvGallery.setLayoutManager(gridLayoutManager);
+    }
     public void dispatchTakePictureIntent() {
         File f = null;
+        // tenta criar um arquivo de imagem vazio
         try {
             f = createImageFile();
         } catch (IOException e) {
+            // erro ao criar o arquivo
             Toast.makeText(MainActivity.this, "Não foi possível criar o arquivo", Toast.LENGTH_LONG).show();
             return;
         }
 
+        // pega o caminho da foto
         currentPhotoPath = f.getAbsolutePath();
 
         if(f == null) return;
-        Uri fUri = FileProvider.getUriForFile(MainActivity.this, "alvarenga.brandao.galeria.fileProvider", f);
+        Uri fUri = FileProvider.getUriForFile(MainActivity.this, "alvarenga.brandao.galeria.fileprovider", f);
+
+        // Intent para capturar a foto
         Intent i = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         i.putExtra(MediaStore.EXTRA_OUTPUT, fUri);
         startActivityForResult(i, RESULT_TAKE_PICTURE);
     }
 
     private File createImageFile() throws IOException{
+        // utiliza a data para nomear o arquivo
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String imageFileName = "JPEG_" + timeStamp;
+
+        // acessa o diretorio de imagens
         File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
         File f = File.createTempFile(imageFileName, ".jpg", storageDir);
         return f;
@@ -73,11 +122,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void checkForPermissions(List<String> permissions) {
         List<String> permissionsNotGranted = new ArrayList<>();
+        // verifica se as permissoes nao foram dadas
         for(String permission : permissions) {
             if (!hasPermission(permission)) {
                 permissionsNotGranted.add(permission);
             }
         }
+
+        // pede a permissao que ainda nao foram concedidas
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (permissionsNotGranted.size() > 0) {
                 requestPermissions(permissionsNotGranted.toArray(new String[permissionsNotGranted.size()]), RESULT_REQUEST_PERMISSION);
@@ -86,6 +138,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean hasPermission(String permission) {
+        // testa se a permissao foi concedida
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             return ActivityCompat.checkSelfPermission(MainActivity.this, permission) == PackageManager.PERMISSION_GRANTED;
             }
@@ -100,6 +153,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (requestCode == RESULT_REQUEST_PERMISSION) {
 
+            // permissoes negadas
             for(String permission : permissions) {
                 if (!hasPermission(permission)) {
                     permissionsRejected.add(permission);
@@ -110,7 +164,7 @@ public class MainActivity extends AppCompatActivity {
         if (permissionsRejected.size() > 0) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
-            }
+                // Checa se podemos pedir permissoes ao usuario
                 if(shouldShowRequestPermissionRationale(permissionsRejected.get(0)))
                 {
                     new AlertDialog.Builder(MainActivity.this).setMessage("Para usar essa epp é preciso conceder essas permissões").setPositiveButton("OK", new DialogInterface.OnClickListener() {
@@ -119,6 +173,7 @@ public class MainActivity extends AppCompatActivity {
                             requestPermissions(permissionsRejected.toArray(new String[permissionsRejected.size()]), RESULT_REQUEST_PERMISSION);
                         }
                     }).create().show();
+                }
             }
         }
     }
@@ -131,63 +186,34 @@ public class MainActivity extends AppCompatActivity {
             photos.add(currentPhotoPath);
             mainAdapter.notifyItemInserted(photos.size()-1);
         } else {
+            // apaga o arquivo caso a tela nao abra corretamente
             File f = new File(currentPhotoPath);
             f.delete();
         }
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_main);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
-        List<String> permissions = new ArrayList<>();
-        permissions.add(Manifest.permission.CAMERA);
-        checkForPermissions(permissions);
-
-        Toolbar toolbar = findViewById(R.id.tbMain);
-        setSupportActionBar(toolbar);
-
-        File dir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        File[] files = dir.listFiles();
-        for(int i = 0; i <= files.length; i++) {
-            photos.add(files[i].getAbsolutePath());
-        }
-        mainAdapter = new MainAdapter(MainActivity.this, photos);
-        RecyclerView rvGallery = findViewById(R.id.rvGallery);
-        rvGallery.setAdapter(mainAdapter);
-        float w = getResources().getDimension(R.dimen.itemWidth);
-        int numberOfColumns = Util.calculateNoOfColumns(MainActivity.this, w);
-        GridLayoutManager gridLayoutManager = new GridLayoutManager(MainActivity.this, numberOfColumns);
-        rvGallery.setLayoutManager(gridLayoutManager);
-    }
-
-    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
         MenuInflater inflater = getMenuInflater();
+        // infla a view do menu
         inflater.inflate(R.menu.main_activity_tb, menu);
         return true;
     }
 
-    @Override
+    @Override // chamada quando o item da toolbar é selecionado
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        switch (item.getItemId()){
-            case R.id.opCamera:
-                dispatchTakePictureIntent();
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
+        if (item.getItemId() == R.id.opCamera) {
+            // tira a foto
+            dispatchTakePictureIntent();
+            return true;
         }
+        return super.onOptionsItemSelected(item);
     }
 
     public void startPhotoActivity(String photoPath) {
         Intent i = new Intent(MainActivity.this, PhotoActivity.class);
+        // passa o caminho da foto
         i.putExtra("photo_path", photoPath);
         startActivity(i);
     }
